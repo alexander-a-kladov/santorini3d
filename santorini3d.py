@@ -66,18 +66,23 @@ class Field:
         print(self.matrix)
 
     def render_field(self, obj3d):
+        trans_mat = [[0,0,0],[2.05,5,-2.0],[2,6,-2.0],[3.6,3,-3.4]]
         for i in range(0,len(self.matrix)):
             for j in range(0,len(self.matrix[i])):
                 for v in range(0,self.matrix[i][j]+1,10):
                     glPushMatrix()
                     glTranslate(j*29.5,v*2.0-20,i*29.5)
                     if v==10:
+                        glTranslate(*trans_mat[0])
                         obj3d.draw("level1_v1")
                     elif v==20:
+                        glTranslate(*trans_mat[1])
                         obj3d.draw("level2_v1")
                     elif v==30:
+                        glTranslate(*trans_mat[2])
                         obj3d.draw("level3")
                     elif v==40:
+                        glTranslate(*trans_mat[3])
                         obj3d.draw("dome")
                     glPopMatrix()
 
@@ -189,9 +194,12 @@ def main():
         glEnable(GL_COLOR_MATERIAL)
         glEnable(GL_DEPTH_TEST)
         glShadeModel(GL_SMOOTH)
+        glClearColor(0.45, 0.7, 0.9, 1)  # Sky blue
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
-        gluPerspective(45, WIDTH/HEIGHT, 0.1, 300)
+        gluPerspective(45, WIDTH/HEIGHT, 0.1, 350)
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         phi, theta = np.radians(cam_angle)
