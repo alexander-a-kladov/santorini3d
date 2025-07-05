@@ -104,7 +104,7 @@ class OBJECTS3D:
             self.objects3d[name] = OBJ(fname)
         self.objects3d['level3'] = OBJ('level3.obj')
         self.objects3d['dome'] = OBJ('dome.obj')
-        #self.objects3d['worker'] = OBJ('worker.obj')
+        self.objects3d['worker'] = OBJ('worker.obj')
         os.chdir("..")
         
     def draw(self, obj_name):

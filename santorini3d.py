@@ -45,48 +45,6 @@ class Cube:
         glEnd()
         glPopMatrix()
 
-
-class Field:
-    def __init__(self):
-        self.matrix=[[0]*5,[0]*5,[0]*5,[0]*5,[0]*5]
-    
-    def build(self, i, j):
-        if self.matrix[i][j]<40:
-            self.matrix+=10
-    
-    def get(self, i, j):
-        return self.matrix[i][j]
-    
-    def random(self):
-        for row in self.matrix:
-            for j in range(0,len(row)):
-                row[j] = random.choice([0,10,20,30,40])
-    
-    def print(self):
-        print(self.matrix)
-
-    def render_field(self, obj3d):
-        trans_mat = [[0,0,0],[2.05,5,-2.0],[2,6,-2.0],[3.6,3,-3.4]]
-        for i in range(0,len(self.matrix)):
-            for j in range(0,len(self.matrix[i])):
-                for v in range(0,self.matrix[i][j]+1,10):
-                    glPushMatrix()
-                    glTranslate(j*29.5,v*2.0-20,i*29.5)
-                    if v==10:
-                        glTranslate(*trans_mat[0])
-                        obj3d.draw("level1_v1")
-                    elif v==20:
-                        glTranslate(*trans_mat[1])
-                        obj3d.draw("level2_v1")
-                    elif v==30:
-                        glTranslate(*trans_mat[2])
-                        obj3d.draw("level3")
-                    elif v==40:
-                        glTranslate(*trans_mat[3])
-                        obj3d.draw("dome")
-                    glPopMatrix()
-
-
 def render_scene(cubes, selected_idx=None, outline=False):
     for i, cube in enumerate(cubes):
         cube.draw()
@@ -114,6 +72,95 @@ def pick_object(mouse_x, mouse_y, cubes):
             return idx
     return None
 
+
+class Field:
+    def __init__(self):
+        self.matrix=[[0]*5,[0]*5,[0]*5,[0]*5,[0]*5]
+        self.trans_mat = [[0,0,0],[2.05,5,-2.0],[2,6,-2.0],[3.6,3,-3.4]]
+    
+    def build(self, i, j):
+        if self.matrix[i][j]<40:
+            self.matrix+=10
+    
+    def get(self, i, j):
+        return self.matrix[i][j]
+    
+    def get_trans_mat(self, v):
+        return self.trans_mat[v]
+    
+    def get_base_pos(self, i, j, v):
+        return (j*29.5,v*2.0-20,i*29.5)
+    
+    def random(self):
+        for row in self.matrix:
+            for j in range(0,len(row)):
+                row[j] = random.choice([0,10,20,30,40])
+    
+    def print(self):
+        print(self.matrix)
+
+    def render_field(self, obj3d):
+        for i in range(0,len(self.matrix)):
+            for j in range(0,len(self.matrix[i])):
+                for v in range(0,self.matrix[i][j]+1,10):
+                    glPushMatrix()
+                    glTranslate(*self.get_base_pos(i,j,v))
+                    if v==10:
+                        glTranslate(*self.trans_mat[0])
+                        obj3d.draw("level1_v1")
+                    elif v==20:
+                        glTranslate(*self.trans_mat[1])
+                        obj3d.draw("level2_v1")
+                    elif v==30:
+                        glTranslate(*self.trans_mat[2])
+                        obj3d.draw("level3")
+                    elif v==40:
+                        glTranslate(*self.trans_mat[3])
+                        obj3d.draw("dome")
+                    glPopMatrix()
+
+
+class Worker:
+    def __init__(self):
+        self.pos = None
+    
+    def set_position(self, pos_ij, field: Field):
+        i, j = pos_ij
+        self.pos = (i, j, field.get(i,j)+10)
+    
+    def get_position(self):
+        return self.pos
+    
+    def draw(self, obj3d, field: Field):
+        if self.pos:
+            glPushMatrix()
+            glTranslate(*field.get_base_pos(*self.pos))
+            glTranslate(*field.get_trans_mat(self.pos[2]//10))
+            glTranslate(5,0,0)
+            glScale(2,2,2)
+            obj3d.draw("worker")
+            glPopMatrix()
+
+
+class Player:
+    def __init__(self, obj3d : OBJECTS3D, field: Field):
+        self.workers = [Worker(), Worker()]
+        self.active_worker = None
+        self.obj3d = obj3d
+        self.field = field
+    
+    def set_active_worker(self, num):
+        self.active_worker = num
+    
+    def move(self, pos_ij):
+        if self.active_worker:
+            self.workers[self.active_worker].set_position(pos_ij, self.field)
+
+    def draw_workers(self):
+        for i, elm in enumerate(self.workers):
+            elm.draw(self.obj3d, self.field)
+
+
 def main():
     pygame.init()
     pygame.display.set_mode((WIDTH, HEIGHT), DOUBLEBUF | OPENGL)
@@ -134,6 +181,8 @@ def main():
     field = Field()
     field.random()
     field.print()
+    worker = Worker()
+    worker.set_position((2,0), field)
     selected_idx = None
     dragging = False
     drag_offset = np.zeros(3)
@@ -216,6 +265,7 @@ def main():
         glPushMatrix()
         glTranslate(-70,0,-48)
         field.render_field(obj3d)
+        worker.draw(obj3d, field)
         glPopMatrix()
         glPopMatrix()
         #render_scene(cubes, selected_idx, outline=True)
