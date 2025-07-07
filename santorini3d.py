@@ -7,8 +7,10 @@ from OpenGL.GLU import *
 import numpy as np
 from objects3d import *
 import random
+import sys
 
 WIDTH, HEIGHT = 1200, 800
+FIELD_SIZE = 5
 
 class Cube:
     def __init__(self, pos, color, pick_color):
@@ -95,7 +97,16 @@ class Field:
         for row in self.matrix:
             for j in range(0,len(row)):
                 row[j] = random.choice([0,10,20,30,40])
-    
+
+    def find_available(self, pos_i, pos_j):
+        available = []
+        for i in range(pos_i-1,pos_i+2):
+            for j in range(pos_j-1,pos_j+2):
+                if i>=0 and i<FIELD_SIZE and j>=0 and j<FIELD_SIZE:
+                    if abs(self.matrix[i][j]-self.matrix[pos_i][pos_j]) <= 10:
+                        available.append((i,j))
+        return available
+
     def print(self):
         print(self.matrix)
 
@@ -127,15 +138,29 @@ class Worker:
     def set_position(self, pos_ij, field: Field):
         i, j = pos_ij
         self.pos = (i, j, field.get(i,j)+10)
+
+    def set_random_pos(self, field: Field):
+        for n in range(25):
+            i = random.randint(0,4)
+            j = random.randint(0,4)
+            if field.get(i, j) < 40:
+                self.pos = (i, j, field.get(i,j)+10)
+                return True
+        return False
     
     def get_position(self):
         return self.pos
+    
+    def get_ij_position(self):
+        return (self.pos[0], self.pos[1])
     
     def draw(self, obj3d, field: Field):
         if self.pos:
             glPushMatrix()
             glTranslate(*field.get_base_pos(*self.pos))
-            glTranslate(*field.get_trans_mat(self.pos[2]//10))
+            v = self.pos[2]//10
+            if v>0:
+                glTranslate(*field.get_trans_mat(v-1))
             glTranslate(5,0,0)
             glScale(2,2,2)
             obj3d.draw("worker")
@@ -182,7 +207,12 @@ def main():
     field.random()
     field.print()
     worker = Worker()
-    worker.set_position((2,0), field)
+    if not worker.set_random_pos(field):
+        print("can't place worker")
+        sys.exit()
+    else:
+        print(worker.get_position())
+    print(field.find_available(*worker.get_ij_position()))
     selected_idx = None
     dragging = False
     drag_offset = np.zeros(3)
