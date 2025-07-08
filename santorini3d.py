@@ -17,7 +17,7 @@ class Cube:
         self.pos = np.array(pos, dtype=float)
         self.color = color
         self.pick_color = pick_color  # Unique color for picking
-        self.size = 1.0
+        self.size = 12.0
 
     def draw(self, wireframe=False, color_override=None):
         glPushMatrix()
@@ -58,8 +58,11 @@ def render_scene(cubes, selected_idx=None, outline=False):
             glLineWidth(1)
 
 def render_for_picking(cubes):
+    glPushMatrix()
+    glTranslate(-70,-30,-48)
     for cube in cubes:
         cube.draw(color_override=cube.pick_color)
+    glPopMatrix()
 
 def pick_object(mouse_x, mouse_y, cubes):
     # Render to back buffer with unique colors
@@ -68,9 +71,11 @@ def pick_object(mouse_x, mouse_y, cubes):
     glFlush()
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1)
     data = glReadPixels(mouse_x, HEIGHT - mouse_y, 1, 1, GL_RGB, GL_UNSIGNED_BYTE)
-    picked_color = (data[0]/255.0,data[1]/255.0,data[2]/255.0)
+    picked_color = (data[0]/255,data[1]/255,data[2]/255)
+    print(picked_color)
     for idx, cube in enumerate(cubes):
-        if np.allclose(picked_color, cube.pick_color, atol=1/255):
+        print(cube.pick_color)
+        if np.allclose(picked_color, cube.pick_color, atol=1):
             return idx
     return None
 
@@ -96,15 +101,15 @@ class Field:
     def random(self):
         for row in self.matrix:
             for j in range(0,len(row)):
-                row[j] = random.choice([0,10,20,30,40])
+                row[j] = random.choice([0,10,20,30])
 
     def find_available(self, pos_i, pos_j):
         available = []
         for i in range(pos_i-1,pos_i+2):
             for j in range(pos_j-1,pos_j+2):
-                if i>=0 and i<FIELD_SIZE and j>=0 and j<FIELD_SIZE:
-                    if abs(self.matrix[i][j]-self.matrix[pos_i][pos_j]) <= 10:
-                        available.append((i,j))
+                if i>=0 and i<FIELD_SIZE and j>=0 and j<FIELD_SIZE and ((i,j)!=(pos_i,pos_j)):
+                    if abs(self.matrix[i][j]-self.matrix[pos_i][pos_j]) <= 10 and self.matrix[i][j]<40:
+                        available.append((i,j,self.matrix[i][j]))
         return available
 
     def print(self):
@@ -192,16 +197,14 @@ def main():
     clock = pygame.time.Clock()
 
     # Camera parameters
-    cam_angle = [30, 0]
+    cam_angle = [30, -30]
     cam_radius = 200
     cam_target = np.array([0,0,0], dtype=float)
 
     # Scene objects
-    cubes = [
-        Cube([-2,0,0], (1,0,0), (1,0,0)),
-        Cube([2,0,0], (0,1,0), (0,1,0)),
-        Cube([0,2,0], (0,0,1), (0,0,1)),
-    ]
+    #cubes = [Cube([-2,0,0], (1,0,0), (1,0,0))]
+    cubes = []
+
     obj3d = OBJECTS3D()
     field = Field()
     field.random()
@@ -212,11 +215,22 @@ def main():
         sys.exit()
     else:
         print(worker.get_position())
-    print(field.find_available(*worker.get_ij_position()))
     selected_idx = None
     dragging = False
     drag_offset = np.zeros(3)
     last_mouse_pos = None
+
+    available = field.find_available(*worker.get_ij_position())
+    if len(available)>0:
+        cubes.clear()
+        for elm in available:
+            x,y,z = field.get_base_pos(*elm)
+            x += 9
+            y += 20
+            z += -9
+            print(elm[0], elm[1])
+            cubes.append(Cube([x,y,z], (1,0,1), (elm[0]/100.0,elm[1]/100.0,0)))
+    print(available)
 
     while True:
         for event in pygame.event.get():
@@ -227,6 +241,7 @@ def main():
                 if event.button == 1:  # Left click
                     mx, my = pygame.mouse.get_pos()
                     idx = pick_object(mx, my, cubes)
+                    print(idx)
                     selected_idx = idx
                     if idx is not None:
                         dragging = True
@@ -296,9 +311,9 @@ def main():
         glTranslate(-70,0,-48)
         field.render_field(obj3d)
         worker.draw(obj3d, field)
+        render_scene(cubes, selected_idx, outline=True)
         glPopMatrix()
         glPopMatrix()
-        #render_scene(cubes, selected_idx, outline=True)
         pygame.display.flip()
         clock.tick(60)
 
